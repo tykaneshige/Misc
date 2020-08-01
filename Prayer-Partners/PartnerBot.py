@@ -18,6 +18,9 @@ class PartnerBot(commands.Cog):
         self.bot = bot
         self.ps = PrayerSheet(read_file, write_file)
 
+        # Read in the list names from the file
+        self.ps.read_names()
+
     @commands.Cog.listener()
     async def on_ready(self):
         print('Logged in as')
@@ -25,6 +28,7 @@ class PartnerBot(commands.Cog):
         print(self.bot.user.id)
         print('------')
 
+    # Basic connection test
     @commands.command()
     async def ping(self, ctx):
         await ctx.send('pong!')
@@ -72,6 +76,11 @@ class PartnerBot(commands.Cog):
             await ctx.send('Please pass 1 or more names.')
             return
 
+        # Check for an empty name list
+        if len(self.ps.members) == 0:
+            await ctx.send('There are no members to remove.')
+            return
+
         # Remove names from prayersheet object
         try:
             # Check that the name exists
@@ -99,6 +108,10 @@ class PartnerBot(commands.Cog):
     @commands.command()
     async def pair(self, ctx):
         
+        # Verify that the number of members is greater than 0
+        if len(self.ps.members) == 0:
+            await ctx.send('There are no members to pair!')
+        
         try:
             self.ps.randomize()
             await ctx.send('Names successfully paried.')
@@ -122,6 +135,44 @@ class PartnerBot(commands.Cog):
                     await ctx.send('{}: {}'.format(str(p1), str(p2)))
         except:
             await ctx.send('Error listing pairings.')
+
+    # Clears all pairings (from both the object and file)
+    @commands.command()
+    async def clear(self, ctx):
+
+        try:
+            self.ps.clear()
+            await ctx.send('Successfully cleared pairings.')
+        except:
+            await ctx.send('Error clearing pairings.')
+
+    # Swaps two partners
+    @commands.command()
+    async def swap(self, ctx, *args):
+
+        # Check if two names were passed
+        if len(args) != 2:
+            await ctx.send('Please pass *two* names.')
+        
+        n1 = args[0]
+        n2 = args[1]
+
+        # Swap the names
+        try:
+            result = self.ps.swap(n1,n2)
+
+            if result == 1:
+                await ctx.send('Name 1 is invalid.')
+                return
+            
+            if result == 2:
+                await ctx.send('Name 2 is invalid.')
+                return
+
+            await ctx.send('Successfully swapped \'{}\' and \'{}\'.'.format(n1,n2))
+        except:
+            await ctx.send('Error swapping names.')
+
 
     # Exit commands
     @commands.command()

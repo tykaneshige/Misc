@@ -1,3 +1,4 @@
+import math
 import os
 import random
 
@@ -7,7 +8,6 @@ class PrayerSheet:
         self.read_file = r_file
         self.write_file = w_file
         self.members = []
-        self.numMembers = 0
         self.numOdd = False
         self.memberHash = {}
         self.partners = {}
@@ -20,15 +20,29 @@ class PrayerSheet:
             return 1
 
         # Read in the names and remove any newlines
-        # Get a total number of members
         with open(self.read_file, 'r') as fd:
             for n in fd:
                 self.members.append(str.rstrip(str(n)))
-                self.numMembers += 1
 
         # Calculate if there is an odd number of members
-        if self.numMembers % 2:
+        if len(self.members) % 2:
             self.numOdd = True
+
+    # Alphabetizes the list of members
+    def alphabetize_names(self, start, end):
+
+        if start == end:
+            return self.members[start]
+        else:
+
+            midpoint = math.floor((end - start) / 2)
+            left = self.members[:midpoint]
+            right = self.members[midpoint:]
+
+            sorted_left = alphabetize_names(left)
+            sorted_right = alphabetize_names(right)
+
+            pass
 
     # Add any number of names
     def add_names(self, *args):
@@ -54,13 +68,14 @@ class PrayerSheet:
             self.memberHash[i] = str(n)
 
         # Repeatedly generate pairings until finished
+        numMembers = len(self.members)
         complete = False
         counter = 0
         while not complete:
 
             # Generate two random integers
-            num1 = random.randint(0,self.numMembers-1)
-            num2 = random.randint(0,self.numMembers-1)
+            num1 = random.randint(0,numMembers-1)
+            num2 = random.randint(0,numMembers-1)
 
             # Check if the two numbers are equal
             if num1 == num2:
@@ -84,7 +99,7 @@ class PrayerSheet:
                 if (name1 in self.partners):
 
                     while 1:
-                        if num1 == self.numMembers-1:
+                        if num1 == numMembers-1:
                             num1 = 0
                         else:
                             num1 += 1
@@ -101,7 +116,7 @@ class PrayerSheet:
                 if (name2 in self.partners):
 
                     while 1:
-                        if num2 == self.numMembers-1:
+                        if num2 == numMembers-1:
                             num2 = 0
                         else:
                             num2 += 1
@@ -120,11 +135,48 @@ class PrayerSheet:
 
             # Check if all names are used
             if self.numOdd:
-                if counter == self.numMembers-1:
+                if counter == numMembers-1:
                     complete = True
             else:
-                if counter == self.numMembers:
+                if counter == numMembers:
                     complete = True
+
+        # Write the partners to a csv file
+        with open(self.write_file, 'w') as fd:
+            for key,val in self.partners.items():
+                fd.write(str(key) + "," + str(val) +'\n')
+
+    # Clears pairings
+    def clear(self):
+        
+        # Clear pairings from object
+        self.partners.clear()
+        
+        # Clear pairings from file
+        with open(write_file, 'r+') as fd:
+            fd.truncate(0)
+
+    # Swaps two partners
+    def swap(self, name1, name2):
+
+        # Verify that both names are in the partner dict
+        if name1 not in self.partners:
+            return 1
+
+        if name2 not in self.partners:
+            return 2
+
+        # Find the partners of both members
+        partner1 = self.partners[str(name1)]
+        partner2 = self.partners[str(name2)]
+
+        # Swap the members
+        self.partners[str(partner1)] = name2
+        self.partners[str(partner2)] = name1
+
+        # Swap the partners
+        self.partners[str(name1)] = partner2
+        self.partners[str(name2)] = partner1
 
         # Write the partners to a csv file
         with open(self.write_file, 'w') as fd:

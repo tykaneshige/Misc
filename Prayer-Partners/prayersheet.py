@@ -8,8 +8,6 @@ class PrayerSheet:
         self.read_file = r_file
         self.write_file = w_file
         self.members = []
-        self.numOdd = False
-        self.memberHash = {}
         self.partners = {}
 
     # Read in members of the small group
@@ -19,56 +17,94 @@ class PrayerSheet:
         if os.stat(self.read_file).st_size == 0:
             return 1
 
+        # Clear the members list
+        self.members.clear()
+
         # Read in the names and remove any newlines
         with open(self.read_file, 'r') as fd:
             for n in fd:
                 self.members.append(str.rstrip(str(n)))
 
-        # Calculate if there is an odd number of members
-        if len(self.members) % 2:
-            self.numOdd = True
+        # Alphabetize names
+        self.alphabetize_names(self.members)
 
     # Alphabetizes the list of members
-    def alphabetize_names(self, start, end):
+    def alphabetize_names(self, arr):
 
-        if start == end:
-            return self.members[start]
-        else:
+        if len(arr) > 1:
 
-            midpoint = math.floor((end - start) / 2)
-            left = self.members[:midpoint]
-            right = self.members[midpoint:]
+            midpoint = math.floor(len(arr) / 2)
+            left = arr[:midpoint]
+            right = arr[midpoint:]
 
-            sorted_left = alphabetize_names(left)
-            sorted_right = alphabetize_names(right)
+            self.alphabetize_names(left)
+            self.alphabetize_names(right)
 
-            pass
+            l = r = i = 0
+
+            while l < len(left) and r < len(right):
+                if left[l] < right[r]:
+                    arr[i] = left[l]
+                    l += 1
+                else:
+                    arr[i] = right[r]
+                    r += 1
+                i += 1
+
+            while l < len(left):
+                arr[i] = left[l]
+                l += 1
+                i += 1
+            
+            while r < len(right):
+                arr[i] = right[r]
+                r += 1
+                i += 1
 
     # Add any number of names
-    def add_names(self, *args):
+    def add_names(self, names):
 
         # Check for duplicate names
-        for arg in args:
-            if arg not in self.members:
-                self.members.append(arg)
+        for name in names:
+            if name not in self.members:
+                self.members.append(name)
+                self.partners[name] = 'None'
+
+        # Alphabetize names
+        self.alphabetize_names(self.members)
 
     # Remove any number of names
-    def remove_names(self, *args):
+    def remove_names(self, names):
         
         # Check that the name exists
-        for arg in args:
-            if arg in self.members:
-                self.members.remove(arg)
+        for name in names:
+            if name in self.members:
+                self.members.remove(name)
+
+        # Remove name in the pairings
+        for key,value in self.partners.items():
+            if value in names:
+                self.partners[key] = 'None'
 
     # Randomize members
     def randomize(self):
 
+        # Clear any pairings
+        self.partners.clear()
+
         # Creates a hash (number -> name) of the members
+        memberHash = {}
         for i,n in enumerate(self.members, start=0):
-            self.memberHash[i] = str(n)
+            memberHash[i] = str(n)
 
         # Repeatedly generate pairings until finished
         numMembers = len(self.members)
+
+        # Calculate if there is an odd number of members
+        numOdd = False
+        if numMembers % 2:
+            numOdd = True
+        
         complete = False
         counter = 0
         while not complete:
@@ -82,8 +118,8 @@ class PrayerSheet:
                 continue
 
             # Generate the names from the number
-            name1 = self.memberHash[num1]
-            name2 = self.memberHash[num2]
+            name1 = memberHash[num1]
+            name2 = memberHash[num2]
 
             # Both names are not yet used
             if (name1 not in self.partners) and (name2 not in self.partners):
@@ -107,7 +143,7 @@ class PrayerSheet:
                         if num1 == num2:
                             continue
 
-                        name1 = self.memberHash[num1]
+                        name1 = memberHash[num1]
 
                         if name1 not in self.partners:
                             break
@@ -124,7 +160,7 @@ class PrayerSheet:
                         if num1 == num2:
                             continue
 
-                        name2 = self.memberHash[num2]
+                        name2 = memberHash[num2]
 
                         if name2 not in self.partners:
                             break
@@ -134,17 +170,22 @@ class PrayerSheet:
                 counter += 2
 
             # Check if all names are used
-            if self.numOdd:
+            if numOdd:
                 if counter == numMembers-1:
                     complete = True
+
+                    # Add an entry for the member with no partner
+                    for key in self.members:
+                        if key not in self.partners:
+                            self.partners[key] = 'None'
             else:
                 if counter == numMembers:
                     complete = True
 
         # Write the partners to a csv file
         with open(self.write_file, 'w') as fd:
-            for key,val in self.partners.items():
-                fd.write(str(key) + "," + str(val) +'\n')
+            for key in self.members:
+                fd.write('{},{}\n'.format(key, self.partners[key]))
 
     # Clears pairings
     def clear(self):
@@ -153,7 +194,7 @@ class PrayerSheet:
         self.partners.clear()
         
         # Clear pairings from file
-        with open(write_file, 'r+') as fd:
+        with open(self.write_file, 'r+') as fd:
             fd.truncate(0)
 
     # Swaps two partners
@@ -171,14 +212,19 @@ class PrayerSheet:
         partner2 = self.partners[str(name2)]
 
         # Swap the members
-        self.partners[str(partner1)] = name2
-        self.partners[str(partner2)] = name1
-
-        # Swap the partners
         self.partners[str(name1)] = partner2
         self.partners[str(name2)] = partner1
+        
+        # Swap the partners
+        if partner1 not in self.partners:
+            self.partners[str(partner2)] = name1
+        elif partner2 not in self.partners:
+            self.partners[str(partner1)] = name2
+        else:
+            self.partners[str(partner1)] = name2
+            self.partners[str(partner2)] = name1
 
         # Write the partners to a csv file
         with open(self.write_file, 'w') as fd:
-            for key,val in self.partners.items():
-                fd.write(str(key) + "," + str(val) +'\n')
+            for key in self.members:
+                fd.write('{},{}\n'.format(key, self.partners[key]))

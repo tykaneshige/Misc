@@ -18,6 +18,9 @@ class PartnerBot(commands.Cog):
         self.bot = bot
         self.ps = PrayerSheet(read_file, write_file)
 
+        # Clear any old data
+        self.ps.clear()
+
         # Read in the list names from the file
         self.ps.read_names()
 
@@ -58,11 +61,7 @@ class PartnerBot(commands.Cog):
 
         # Add names to prayersheet object
         try:
-            # Check for duplicate names
-            for arg in args:
-                if arg not in self.ps.members:
-                    self.ps.members.append(arg)
-
+            self.ps.add_names(args)
             await ctx.send('Names successfully added.')
         except:
             await ctx.send('Error adding names.')
@@ -83,11 +82,7 @@ class PartnerBot(commands.Cog):
 
         # Remove names from prayersheet object
         try:
-            # Check that the name exists
-            for arg in args:
-                if arg in self.ps.members:
-                    self.ps.members.remove(arg)
-
+            self.ps.remove_names(args)
             await ctx.send('Names successfully removed.')
         except:
             await ctx.send('Error removing names.')
@@ -111,7 +106,7 @@ class PartnerBot(commands.Cog):
         # Verify that the number of members is greater than 0
         if len(self.ps.members) == 0:
             await ctx.send('There are no members to pair!')
-        
+
         try:
             self.ps.randomize()
             await ctx.send('Names successfully paried.')
@@ -120,19 +115,28 @@ class PartnerBot(commands.Cog):
 
     # List the pairings
     @commands.command()
-    async def pairings(self, ctx):
+    async def pairings(self, ctx, send_file=''):
 
-        try:
-            # Check if the file is empty
-            if os.stat(self.ps.write_file).st_size == 0:
-                await ctx.send('Partner file is empty!')
+        # Verify that there are pairings
+        if len(self.ps.partners) == 0:
+            await ctx.send('There are no pairings yet!')
+            return
+
+        # Check if the user wants the pairings in file format
+        if send_file == 'file':
+            try:
+                await ctx.send(file=discord.File(write_file))
+                return
+            except:
+                await ctx.send('Error sending file.')
                 return
 
-            # Write the server
-            with open(self.ps.write_file, 'r') as fd:
-                for line in fd:
-                    p1,p2 = line.split(',')
-                    await ctx.send('{}: {}'.format(str(p1), str(p2)))
+        try:
+            # Write to the server
+            for key in self.ps.members:
+                if key not in self.ps.partners:
+                    continue
+                await ctx.send('{}: {}'.format(key,self.ps.partners[key]))
         except:
             await ctx.send('Error listing pairings.')
 
